@@ -3,6 +3,7 @@ from grid import Grid, State
 from visualizer import Visualizer
 from algorithms import FRONTIER, VISIT, PATH, NO_PATH
 from algorithms.bfs import bfs
+from algorithms.dfs import dfs
 
 ROWS      = 40
 COLS      = 40
@@ -52,7 +53,9 @@ def handle_right_click(grid, cell):
 def get_algorithm(name, grid, start, goal):
     if name == "BFS":
         return bfs(grid, start, goal)
-    # DFS, Dijkstra, A* wired in Phases 6-8
+    if name == "DFS":
+        return dfs(grid, start, goal)
+    # Dijkstra, A* wired in Phases 7-8
     print(f"[placeholder] {name} not yet implemented — running BFS instead")
     return bfs(grid, start, goal)
 
