@@ -1,5 +1,6 @@
 import pygame
 from grid import State
+from algorithms import FRONTIER, VISIT, PATH, NO_PATH
 
 # --- colours ---
 COLOURS = {
@@ -41,6 +42,45 @@ class Visualizer:
                 pygame.draw.rect(self.screen, GRID_LINE_COLOUR, rect, 1)
 
         pygame.display.flip()
+
+    def step_generator(self, gen):
+        """Consume one event from the algorithm generator.
+
+        Returns:
+            "running"  — event processed, algorithm still going
+            "done"     — path found and drawn
+            "no_path"  — search exhausted, no route exists
+        """
+        try:
+            event = next(gen)
+        except StopIteration:
+            return "done"
+
+        kind = event[0]
+
+        if kind == FRONTIER:
+            r, c = event[1]
+            cell = self.grid.get(r, c)
+            if cell.state not in (State.START, State.GOAL):
+                self.grid.set_state(r, c, State.FRONTIER)
+
+        elif kind == VISIT:
+            r, c = event[1]
+            cell = self.grid.get(r, c)
+            if cell.state not in (State.START, State.GOAL):
+                self.grid.set_state(r, c, State.VISITED)
+
+        elif kind == PATH:
+            for r, c in event[1]:
+                cell = self.grid.get(r, c)
+                if cell.state not in (State.START, State.GOAL):
+                    self.grid.set_state(r, c, State.PATH)
+            return "done"
+
+        elif kind == NO_PATH:
+            return "no_path"
+
+        return "running"
 
     def tick(self, fps=60):
         self.clock.tick(fps)

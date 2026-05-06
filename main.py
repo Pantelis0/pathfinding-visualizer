@@ -1,6 +1,8 @@
 import pygame
 from grid import Grid, State
 from visualizer import Visualizer
+from algorithms import FRONTIER, VISIT, PATH, NO_PATH
+from algorithms.bfs import bfs
 
 ROWS      = 40
 COLS      = 40
@@ -13,9 +15,11 @@ ALGO_NAMES = {
     pygame.K_4: "A*",
 }
 
+# Steps consumed per frame — increase to speed up animation
+STEPS_PER_FRAME = 1
+
 
 def cell_at(grid, cell_size, mouse_pos):
-    """Return the Cell under the mouse position, or None if out of bounds."""
     x, y = mouse_pos
     col = x // cell_size
     row = y // cell_size
@@ -25,7 +29,6 @@ def cell_at(grid, cell_size, mouse_pos):
 
 
 def handle_left_click(grid, cell, has_start, has_goal):
-    """Place start → goal → wall in that order. Returns updated (has_start, has_goal)."""
     if cell is None:
         return has_start, has_goal
     if cell.state in (State.START, State.GOAL, State.WALL):
@@ -41,21 +44,28 @@ def handle_left_click(grid, cell, has_start, has_goal):
 
 
 def handle_right_click(grid, cell):
-    """Erase a cell back to empty."""
     if cell is None:
         return
     grid.set_state(cell.row, cell.col, State.EMPTY)
+
+
+def get_algorithm(name, grid, start, goal):
+    if name == "BFS":
+        return bfs(grid, start, goal)
+    # DFS, Dijkstra, A* wired in Phases 6-8
+    print(f"[placeholder] {name} not yet implemented — running BFS instead")
+    return bfs(grid, start, goal)
 
 
 def main():
     grid = Grid(ROWS, COLS)
     vis  = Visualizer(grid, cell_size=CELL_SIZE)
 
-    has_start    = False
-    has_goal     = False
+    has_start     = False
+    has_goal      = False
     selected_algo = "BFS"
-
-    pygame.display.set_caption(f"Pathfinding Visualizer  |  {selected_algo}  |  draw: start")
+    active_gen    = None
+    algo_status   = "idle"   # idle | running | done | no_path
 
     running = True
     while running:
@@ -63,28 +73,45 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            # --- keyboard ---
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
 
                 elif event.key == pygame.K_r:
                     grid.reset()
-                    has_start = False
-                    has_goal  = False
+                    has_start  = False
+                    has_goal   = False
+                    active_gen = None
+                    algo_status = "idle"
 
                 elif event.key == pygame.K_c:
                     grid.clear_search()
+                    active_gen  = None
+                    algo_status = "idle"
 
                 elif event.key in ALGO_NAMES:
                     selected_algo = ALGO_NAMES[event.key]
 
                 elif event.key == pygame.K_SPACE:
-                    # placeholder — algorithms wired in Phase 5+
-                    print(f"[placeholder] would run {selected_algo}")
+                    if has_start and has_goal and algo_status != "running":
+                        grid.clear_search()
+                        start = next(
+                            grid.get(r, c)
+                            for r in range(grid.rows)
+                            for c in range(grid.cols)
+                            if grid.get(r, c).state == State.START
+                        )
+                        goal = next(
+                            grid.get(r, c)
+                            for r in range(grid.rows)
+                            for c in range(grid.cols)
+                            if grid.get(r, c).state == State.GOAL
+                        )
+                        active_gen  = get_algorithm(selected_algo, grid, start, goal)
+                        algo_status = "running"
 
-            # --- single clicks ---
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            # single clicks (only when not running)
+            if event.type == pygame.MOUSEBUTTONDOWN and algo_status != "running":
                 cell = cell_at(grid, CELL_SIZE, event.pos)
                 if event.button == 1:
                     has_start, has_goal = handle_left_click(
@@ -97,29 +124,45 @@ def main():
                         has_goal = False
                     handle_right_click(grid, cell)
 
-        # --- held left-click: drag to draw walls ---
-        if pygame.mouse.get_pressed()[0]:
+        # held left-click: drag walls (only when not running)
+        if algo_status != "running" and pygame.mouse.get_pressed()[0]:
             cell = cell_at(grid, CELL_SIZE, pygame.mouse.get_pos())
             if cell and cell.state == State.EMPTY and has_start and has_goal:
                 grid.set_state(cell.row, cell.col, State.WALL)
 
-        # --- held right-click: drag to erase ---
-        if pygame.mouse.get_pressed()[2]:
+        # held right-click: drag erase (only when not running)
+        if algo_status != "running" and pygame.mouse.get_pressed()[2]:
             cell = cell_at(grid, CELL_SIZE, pygame.mouse.get_pos())
             if cell:
                 if cell.state == State.START:
                     has_start = False
                 elif cell.state == State.GOAL:
-                    has_goal  = False
+                    has_goal = False
                 handle_right_click(grid, cell)
 
-        # update title to reflect current mode
-        if not has_start:
+        # step the generator
+        if algo_status == "running" and active_gen is not None:
+            for _ in range(STEPS_PER_FRAME):
+                result = vis.step_generator(active_gen)
+                if result != "running":
+                    algo_status = result
+                    active_gen  = None
+                    break
+
+        # title bar
+        if algo_status == "running":
+            mode = "running..."
+        elif algo_status == "done":
+            mode = "done — path found"
+        elif algo_status == "no_path":
+            mode = "done — no path"
+        elif not has_start:
             mode = "draw: start"
         elif not has_goal:
             mode = "draw: goal"
         else:
             mode = "draw: walls"
+
         pygame.display.set_caption(
             f"Pathfinding Visualizer  |  algo: {selected_algo}  |  {mode}  |  "
             f"R=reset  C=clear  Space=run"
