@@ -11,6 +11,7 @@ COLOURS = {
     State.VISITED:  (135, 206, 235),
     State.FRONTIER: (255, 165, 0),
     State.PATH:     (255, 230, 0),
+    State.WEIGHTED: (180, 120, 220),  # purple — passable but costly
 }
 GRID_LINE_COLOUR = (200, 200, 200)
 BACKGROUND       = (245, 245, 245)

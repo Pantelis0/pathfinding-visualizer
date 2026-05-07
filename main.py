@@ -6,6 +6,7 @@ from algorithms.bfs import bfs
 from algorithms.dfs import dfs
 from algorithms.dijkstra import dijkstra
 from algorithms.astar import astar
+from maze_gen import generate_maze, paint_weighted
 
 ROWS      = 40
 COLS      = 40
@@ -75,6 +76,7 @@ def main():
     active_gen    = None
     algo_status   = "idle"   # idle | running | done | no_path
     speed         = 1        # steps per frame
+    weight_mode   = False    # W key toggles weighted-terrain painting
 
     running = True
     while running:
@@ -86,12 +88,25 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     running = False
 
+                elif event.key == pygame.K_w:
+                    weight_mode = not weight_mode
+
+                elif event.key == pygame.K_m:
+                    generate_maze(grid)
+                    has_start   = True
+                    has_goal    = True
+                    active_gen  = None
+                    algo_status = "idle"
+                    weight_mode = False
+                    vis.reset_stats()
+
                 elif event.key == pygame.K_r:
                     grid.reset()
-                    has_start  = False
-                    has_goal   = False
-                    active_gen = None
+                    has_start   = False
+                    has_goal    = False
+                    active_gen  = None
                     algo_status = "idle"
+                    weight_mode = False
                     vis.reset_stats()
 
                 elif event.key == pygame.K_c:
@@ -131,9 +146,12 @@ def main():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     cell = cell_at(grid, CELL_SIZE, event.pos)
                     if event.button == 1:
-                        has_start, has_goal = handle_left_click(
-                            grid, cell, has_start, has_goal
-                        )
+                        if weight_mode and cell:
+                            paint_weighted(grid, cell)
+                        else:
+                            has_start, has_goal = handle_left_click(
+                                grid, cell, has_start, has_goal
+                            )
                     elif event.button == 3:
                         if cell and cell.state == State.START:
                             has_start = False
@@ -141,12 +159,13 @@ def main():
                             has_goal = False
                         handle_right_click(grid, cell)
 
-                # MOUSEMOTION fires on every pixel moved — much more reliable
-                # than polling get_pressed() each frame on macOS
+                # MOUSEMOTION fires on every pixel moved — reliable on macOS
                 if event.type == pygame.MOUSEMOTION:
                     cell = cell_at(grid, CELL_SIZE, event.pos)
                     if event.buttons[0] and cell:  # left held
-                        if cell.state == State.EMPTY and has_start and has_goal:
+                        if weight_mode:
+                            paint_weighted(grid, cell)
+                        elif cell.state == State.EMPTY and has_start and has_goal:
                             grid.set_state(cell.row, cell.col, State.WALL)
                     if event.buttons[2] and cell:  # right held
                         if cell.state == State.START:
@@ -171,6 +190,8 @@ def main():
             mode = "done — path found"
         elif algo_status == "no_path":
             mode = "done — no path"
+        elif weight_mode:
+            mode = "draw: weighted terrain (W to exit)"
         elif not has_start:
             mode = "draw: start"
         elif not has_goal:
@@ -180,7 +201,7 @@ def main():
 
         pygame.display.set_caption(
             f"Pathfinding Visualizer  |  algo: {selected_algo}  |  {mode}  |  "
-            f"R=reset  C=clear  Space=run"
+            f"R=reset  C=clear  M=maze  W=weight  Space=run"
         )
 
         vis.draw(algo_name=selected_algo, status=algo_status, speed=speed)

@@ -9,6 +9,7 @@ class State(Enum):
     VISITED  = auto()
     FRONTIER = auto()
     PATH     = auto()
+    WEIGHTED = auto()  # passable but costs more (weight > 1)
 
 
 class Cell:
@@ -54,7 +55,7 @@ class Grid:
                 cell.weight = 1
 
     def clear_search(self):
-        """Remove visited/frontier/path markings but keep walls, start, and goal."""
+        """Remove visited/frontier/path markings but keep walls, weighted, start, and goal."""
         transient = {State.VISITED, State.FRONTIER, State.PATH}
         for row in self._cells:
             for cell in row:
