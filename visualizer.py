@@ -13,7 +13,10 @@ COLOURS = {
     State.PATH:     (255, 230, 0),
 }
 GRID_LINE_COLOUR = (200, 200, 200)
-BACKGROUND      = (245, 245, 245)
+BACKGROUND       = (245, 245, 245)
+STATS_BG         = (30,  30,  30, 180)
+STATS_TEXT       = (255, 255, 255)
+FONT_SIZE        = 14
 
 
 class Visualizer:
@@ -28,8 +31,17 @@ class Visualizer:
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption("Pathfinding Visualizer")
         self.clock = pygame.time.Clock()
+        self._font = pygame.font.SysFont("monospace", FONT_SIZE, bold=True)
 
-    def draw(self):
+        # stats — updated by step_generator and reset by caller
+        self.visited_count = 0
+        self.path_length   = 0
+
+    def reset_stats(self):
+        self.visited_count = 0
+        self.path_length   = 0
+
+    def draw(self, algo_name="", status="idle"):
         self.screen.fill(BACKGROUND)
         cs = self.cell_size
 
@@ -41,7 +53,30 @@ class Visualizer:
                 pygame.draw.rect(self.screen, colour, rect)
                 pygame.draw.rect(self.screen, GRID_LINE_COLOUR, rect, 1)
 
+        self._draw_stats(algo_name, status)
         pygame.display.flip()
+
+    def _draw_stats(self, algo_name, status):
+        lines = [
+            f"algo:    {algo_name}",
+            f"status:  {status}",
+            f"visited: {self.visited_count}",
+            f"path:    {self.path_length if self.path_length else '--'} cells",
+        ]
+        pad    = 6
+        lh     = FONT_SIZE + 4
+        box_w  = 160
+        box_h  = pad * 2 + lh * len(lines)
+        box_x  = 6
+        box_y  = 6
+
+        surface = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        surface.fill((30, 30, 30, 180))
+        self.screen.blit(surface, (box_x, box_y))
+
+        for i, line in enumerate(lines):
+            text = self._font.render(line, True, STATS_TEXT)
+            self.screen.blit(text, (box_x + pad, box_y + pad + i * lh))
 
     def step_generator(self, gen):
         """Consume one event from the algorithm generator.
@@ -69,12 +104,14 @@ class Visualizer:
             cell = self.grid.get(r, c)
             if cell.state not in (State.START, State.GOAL):
                 self.grid.set_state(r, c, State.VISITED)
+            self.visited_count += 1
 
         elif kind == PATH:
             for r, c in event[1]:
                 cell = self.grid.get(r, c)
                 if cell.state not in (State.START, State.GOAL):
                     self.grid.set_state(r, c, State.PATH)
+            self.path_length = len(event[1])
             return "done"
 
         elif kind == NO_PATH:

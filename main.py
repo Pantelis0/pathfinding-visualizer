@@ -89,11 +89,13 @@ def main():
                     has_goal   = False
                     active_gen = None
                     algo_status = "idle"
+                    vis.reset_stats()
 
                 elif event.key == pygame.K_c:
                     grid.clear_search()
                     active_gen  = None
                     algo_status = "idle"
+                    vis.reset_stats()
 
                 elif event.key in ALGO_NAMES:
                     selected_algo = ALGO_NAMES[event.key]
@@ -115,6 +117,7 @@ def main():
                         )
                         active_gen  = get_algorithm(selected_algo, grid, start, goal)
                         algo_status = "running"
+                        vis.reset_stats()
 
             # single clicks (only when not running)
             if event.type == pygame.MOUSEBUTTONDOWN and algo_status != "running":
@@ -174,7 +177,7 @@ def main():
             f"R=reset  C=clear  Space=run"
         )
 
-        vis.draw()
+        vis.draw(algo_name=selected_algo, status=algo_status)
         vis.tick(60)
 
     vis.quit()
