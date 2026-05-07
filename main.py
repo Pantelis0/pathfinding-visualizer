@@ -18,8 +18,10 @@ ALGO_NAMES = {
     pygame.K_4: "A*",
 }
 
-# Steps consumed per frame — increase to speed up animation
-STEPS_PER_FRAME = 1
+# Speed control — steps consumed per frame, clamped to [1, 50]
+MIN_SPEED = 1
+MAX_SPEED = 50
+
 
 
 def cell_at(grid, cell_size, mouse_pos):
@@ -72,6 +74,7 @@ def main():
     selected_algo = "BFS"
     active_gen    = None
     algo_status   = "idle"   # idle | running | done | no_path
+    speed         = 1        # steps per frame
 
     running = True
     while running:
@@ -100,6 +103,11 @@ def main():
                 elif event.key in ALGO_NAMES:
                     selected_algo = ALGO_NAMES[event.key]
 
+                elif event.key in (pygame.K_PLUS, pygame.K_EQUALS):
+                    speed = min(speed + 1, MAX_SPEED)
+                elif event.key == pygame.K_MINUS:
+                    speed = max(speed - 1, MIN_SPEED)
+
                 elif event.key == pygame.K_SPACE:
                     if has_start and has_goal and algo_status != "running":
                         grid.clear_search()
@@ -119,39 +127,37 @@ def main():
                         algo_status = "running"
                         vis.reset_stats()
 
-            # single clicks (only when not running)
-            if event.type == pygame.MOUSEBUTTONDOWN and algo_status != "running":
-                cell = cell_at(grid, CELL_SIZE, event.pos)
-                if event.button == 1:
-                    has_start, has_goal = handle_left_click(
-                        grid, cell, has_start, has_goal
-                    )
-                elif event.button == 3:
-                    if cell and cell.state == State.START:
-                        has_start = False
-                    elif cell and cell.state == State.GOAL:
-                        has_goal = False
-                    handle_right_click(grid, cell)
+            if algo_status != "running":
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    cell = cell_at(grid, CELL_SIZE, event.pos)
+                    if event.button == 1:
+                        has_start, has_goal = handle_left_click(
+                            grid, cell, has_start, has_goal
+                        )
+                    elif event.button == 3:
+                        if cell and cell.state == State.START:
+                            has_start = False
+                        elif cell and cell.state == State.GOAL:
+                            has_goal = False
+                        handle_right_click(grid, cell)
 
-        # held left-click: drag walls (only when not running)
-        if algo_status != "running" and pygame.mouse.get_pressed()[0]:
-            cell = cell_at(grid, CELL_SIZE, pygame.mouse.get_pos())
-            if cell and cell.state == State.EMPTY and has_start and has_goal:
-                grid.set_state(cell.row, cell.col, State.WALL)
-
-        # held right-click: drag erase (only when not running)
-        if algo_status != "running" and pygame.mouse.get_pressed()[2]:
-            cell = cell_at(grid, CELL_SIZE, pygame.mouse.get_pos())
-            if cell:
-                if cell.state == State.START:
-                    has_start = False
-                elif cell.state == State.GOAL:
-                    has_goal = False
-                handle_right_click(grid, cell)
+                # MOUSEMOTION fires on every pixel moved — much more reliable
+                # than polling get_pressed() each frame on macOS
+                if event.type == pygame.MOUSEMOTION:
+                    cell = cell_at(grid, CELL_SIZE, event.pos)
+                    if event.buttons[0] and cell:  # left held
+                        if cell.state == State.EMPTY and has_start and has_goal:
+                            grid.set_state(cell.row, cell.col, State.WALL)
+                    if event.buttons[2] and cell:  # right held
+                        if cell.state == State.START:
+                            has_start = False
+                        elif cell.state == State.GOAL:
+                            has_goal = False
+                        handle_right_click(grid, cell)
 
         # step the generator
         if algo_status == "running" and active_gen is not None:
-            for _ in range(STEPS_PER_FRAME):
+            for _ in range(speed):
                 result = vis.step_generator(active_gen)
                 if result != "running":
                     algo_status = result
@@ -177,7 +183,7 @@ def main():
             f"R=reset  C=clear  Space=run"
         )
 
-        vis.draw(algo_name=selected_algo, status=algo_status)
+        vis.draw(algo_name=selected_algo, status=algo_status, speed=speed)
         vis.tick(60)
 
     vis.quit()

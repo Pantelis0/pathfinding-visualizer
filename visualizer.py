@@ -41,7 +41,7 @@ class Visualizer:
         self.visited_count = 0
         self.path_length   = 0
 
-    def draw(self, algo_name="", status="idle"):
+    def draw(self, algo_name="", status="idle", speed=1):
         self.screen.fill(BACKGROUND)
         cs = self.cell_size
 
@@ -53,15 +53,16 @@ class Visualizer:
                 pygame.draw.rect(self.screen, colour, rect)
                 pygame.draw.rect(self.screen, GRID_LINE_COLOUR, rect, 1)
 
-        self._draw_stats(algo_name, status)
+        self._draw_stats(algo_name, status, speed)
         pygame.display.flip()
 
-    def _draw_stats(self, algo_name, status):
+    def _draw_stats(self, algo_name, status, speed):
         lines = [
             f"algo:    {algo_name}",
             f"status:  {status}",
             f"visited: {self.visited_count}",
             f"path:    {self.path_length if self.path_length else '--'} cells",
+            f"speed:   {speed}x  (+/- to change)",
         ]
         pad    = 6
         lh     = FONT_SIZE + 4
