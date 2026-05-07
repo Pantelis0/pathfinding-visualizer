@@ -4,6 +4,8 @@ from visualizer import Visualizer
 from algorithms import FRONTIER, VISIT, PATH, NO_PATH
 from algorithms.bfs import bfs
 from algorithms.dfs import dfs
+from algorithms.dijkstra import dijkstra
+from algorithms.astar import astar
 
 ROWS      = 40
 COLS      = 40
@@ -55,9 +57,10 @@ def get_algorithm(name, grid, start, goal):
         return bfs(grid, start, goal)
     if name == "DFS":
         return dfs(grid, start, goal)
-    # Dijkstra, A* wired in Phases 7-8
-    print(f"[placeholder] {name} not yet implemented — running BFS instead")
-    return bfs(grid, start, goal)
+    if name == "Dijkstra":
+        return dijkstra(grid, start, goal)
+    if name == "A*":
+        return astar(grid, start, goal)
 
 
 def main():
