@@ -2,44 +2,78 @@
 
 An interactive grid app that animates BFS, DFS, Dijkstra, and A* in real time using Pygame.
 
-The key design rule: **algorithms emit state changes; the visualizer draws them.**
+**Core design rule:** algorithms emit state changes — the visualizer draws them. Search code never touches Pygame.
+
+---
+
+## Algorithms
+
+| Key | Algorithm | Guarantees shortest path | Handles weights |
+|-----|-----------|--------------------------|-----------------|
+| `1` | BFS | ✅ (unweighted) | ❌ |
+| `2` | DFS | ❌ | ❌ |
+| `3` | Dijkstra | ✅ | ✅ |
+| `4` | A* | ✅ | ✅ |
+
+---
+
+## Controls
+
+| Input | Action |
+|-------|--------|
+| Left click | Place start → goal → walls (in order) |
+| Left click + drag | Draw walls continuously |
+| Right click / drag | Erase cells |
+| `1` `2` `3` `4` | Select algorithm |
+| `Space` | Run selected algorithm |
+| `C` | Clear search (keep walls) |
+| `R` | Full reset |
+| `W` | Toggle weighted terrain paint mode (purple, cost ×5) |
+| `M` | Generate a random maze |
+| `+` / `-` | Increase / decrease animation speed (1×–50×) |
+| `Esc` | Quit |
+
+---
+
+## Setup
+
+```bash
+pip install pygame
+python3 main.py
+```
+
+Requires Python 3.10+ and Pygame 2.x.
+
+---
 
 ## Project structure
 
 ```
 pathfinding-visualizer/
-├── grid.py             # Grid and cell data model
-├── visualizer.py       # Pygame rendering layer
-├── maze_gen.py         # Maze generation
-├── main.py             # Entry point
+├── grid.py             # Cell + Grid data model, State enum
+├── visualizer.py       # All Pygame rendering, step_generator()
+├── maze_gen.py         # Recursive backtracker maze generation
+├── main.py             # Entry point, event loop, controls
+├── requirements.txt
 └── algorithms/
+    ├── __init__.py     # Event protocol definition
     ├── bfs.py
     ├── dfs.py
     ├── dijkstra.py
     └── astar.py
 ```
 
-## Milestone checklist
+---
 
-- [ ] Build the grid data model
-- [ ] Open a Pygame window and draw the board
-- [ ] Add mouse controls for start, goal, and walls
-- [ ] Implement BFS and animate visited cells
-- [ ] Implement DFS
-- [ ] Implement Dijkstra with `heapq`
-- [ ] Implement A* with Manhattan distance heuristic
-- [ ] Add path reconstruction visualization
-- [ ] Add speed controls / reset / statistics
-- [ ] Add weighted terrain
-- [ ] Add maze generation
+## How the event protocol works
 
-## Running
+Every algorithm is a Python generator that yields events:
 
-```bash
-pip install pygame
-python main.py
+```python
+("frontier", (row, col))        # cell added to queue/stack/heap
+("visit",    (row, col))        # cell being processed
+("path",     [(row, col), ...]) # final path, start → goal
+("no_path",)                    # no route exists
 ```
 
-## Resources
-
-- Red Blob Games pathfinding tutorials
+The visualizer calls `next()` on the generator once per frame and updates cell colours accordingly. Algorithms never import from `visualizer.py`.
